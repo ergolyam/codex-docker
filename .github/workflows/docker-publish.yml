@@ -99,7 +99,7 @@ jobs:
       - name: Download OCI archives
         uses: actions/download-artifact@v4
         with:
-          name: image-${{ matrix.dist }}-*
+          pattern: image-${{ matrix.dist }}-*
           path: in
 
       - name: Load images into local storage
