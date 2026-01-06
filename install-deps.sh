@@ -1,9 +1,10 @@
 #!/usr/bin/env sh
 
 DISTRO="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+TARGET="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
 
-case "${DISTRO}" in
-    alpine)
+case "${DISTRO}-${TARGET}" in
+    alpine-builder)
       apk add --no-cache \
         build-base \
         pkgconf \
@@ -15,7 +16,7 @@ case "${DISTRO}" in
       apk add --no-cache \
         ca-certificates || exit 1
       ;;
-    debian)
+    debian-builder)
       apt-get update -y
       apt-get install -y --no-install-recommends \
         build-essential \
