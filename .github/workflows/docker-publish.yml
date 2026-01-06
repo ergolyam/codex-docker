@@ -10,8 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    name: Build ${{ matrix.dist }} ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
@@ -19,11 +18,25 @@ jobs:
           - dist: alpine
             rust_image: rust:alpine
             base_image: alpine:latest
-            tags: "latest alpine"
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: alpine
+            rust_image: rust:alpine
+            base_image: alpine:latest
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
           - dist: debian
             rust_image: rust:slim-trixie
             base_image: debian:trixie-slim
-            tags: "debian"
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: debian
+            rust_image: rust:slim-trixie
+            base_image: debian:trixie-slim
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runs_on }}
 
     steps:
       - name: zram
@@ -48,19 +61,76 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: ghcr.io/${{ github.repository }}
-          tags: ${{ matrix.tags }}
+          tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
           containerfiles: ./dockerfile
           build-args: |
             DIST=${{ matrix.dist }}
             RUST_IMAGE=${{ matrix.rust_image }}
             BASE_IMAGE=${{ matrix.base_image }}
 
-      - name: Push image to GHCR
-        uses: redhat-actions/push-to-registry@v2
+      - name: Save OCI archive (artifact)
+        run: |
+          mkdir -p out
+          podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          image: ghcr.io/${{ github.repository }}
-          tags: ${{ matrix.tags }}
+          name: image-${{ matrix.dist }}-${{ matrix.arch }}
+          path: out/${{ matrix.dist }}-${{ matrix.arch }}.tar
+          retention-days: 1
+          compression-level: 0
+
+
+  manifest:
+    name: Manifest + push ${{ matrix.dist }}
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dist: alpine
+            tags: "latest alpine"
+          - dist: debian
+            tags: "debian"
+
+    steps:
+      - name: Download amd64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-${{ matrix.dist }}-amd64
+          path: in
+
+      - name: Download arm64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-${{ matrix.dist }}-arm64
+          path: in
+
+      - name: Load images into local storage
+        run: |
+          podman load -i "in/${{ matrix.dist }}-amd64.tar"
+          podman load -i "in/${{ matrix.dist }}-arm64.tar"
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create & push multi-arch tags
+        run: |
+          set -euxo pipefail
+          IMAGE="ghcr.io/${{ github.repository }}"
+          AMD="${IMAGE}:ci-${{ matrix.dist }}-amd64"
+          ARM="${IMAGE}:ci-${{ matrix.dist }}-arm64"
+
+          for t in ${{ matrix.tags }}; do
+            podman manifest rm "${IMAGE}:${t}" 2>/dev/null || true
+            podman manifest create "${IMAGE}:${t}"
+            podman manifest add "${IMAGE}:${t}" "${AMD}"
+            podman manifest add "${IMAGE}:${t}" "${ARM}"
+            podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
+          done
