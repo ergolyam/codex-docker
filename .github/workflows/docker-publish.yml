@@ -73,7 +73,7 @@ jobs:
           mkdir -p out
           podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
 
-      - name: Upload artifact
+      - name: Upload OCI archive
         uses: actions/upload-artifact@v4
         with:
           name: image-${{ matrix.dist }}-${{ matrix.arch }}
@@ -96,22 +96,18 @@ jobs:
             tags: "debian"
 
     steps:
-      - name: Download amd64 artifact
+      - name: Download OCI archives
         uses: actions/download-artifact@v4
         with:
-          name: image-${{ matrix.dist }}-amd64
-          path: in
-
-      - name: Download arm64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: image-${{ matrix.dist }}-arm64
+          name: image-${{ matrix.dist }}-*
           path: in
 
       - name: Load images into local storage
         run: |
-          podman load -i "in/${{ matrix.dist }}-amd64.tar"
-          podman load -i "in/${{ matrix.dist }}-arm64.tar"
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            podman load -i "in/${{ matrix.dist }}-${arch}.tar"
+          done
 
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
