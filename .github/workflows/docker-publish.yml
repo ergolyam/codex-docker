@@ -68,7 +68,7 @@ jobs:
             RUST_IMAGE=${{ matrix.rust_image }}
             BASE_IMAGE=${{ matrix.base_image }}
 
-      - name: Save OCI archive (artifact)
+      - name: Save OCI archive
         run: |
           mkdir -p out
           podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
