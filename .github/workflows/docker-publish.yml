@@ -93,7 +93,7 @@ jobs:
 
 
   manifest:
-    name: Manifest + push ${{ matrix.dist }}
+    name: Manifest push ${{ matrix.dist }}
     needs: build
     runs-on: ubuntu-latest
     strategy:
