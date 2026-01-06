@@ -8,7 +8,10 @@ case "${DISTRO}" in
         build-base \
         git \
         perl \
-        openssl-dev \
+        openssl-dev || exit 1
+      ;;
+    alpine-main)
+      apk add --no-cache \
         ca-certificates || exit 1
       ;;
     debian)
@@ -18,7 +21,12 @@ case "${DISTRO}" in
         pkg-config \
         git \
         perl \
-        libssl-dev \
+        libssl-dev || exit 1
+      rm -rf /var/lib/apt/lists/*
+      ;;
+    debian-main)
+      apt-get update -y
+      apt-get install -y --no-install-recommends \
         ca-certificates || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
