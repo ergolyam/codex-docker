@@ -13,7 +13,7 @@ RUN git clone https://github.com/openai/codex -b rust-v0.77.0 /build
 
 WORKDIR /build
 
-RUN cargo build --manifest-path=codex-rs/Cargo.toml --release
+RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
 
 
 FROM docker.io/${BASE_IMAGE} as main
