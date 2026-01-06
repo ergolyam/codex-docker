@@ -15,6 +15,7 @@ case "${DISTRO}" in
       apt-get update -y
       apt-get install -y --no-install-recommends \
         build-essential \
+        pkg-config \
         git \
         perl \
         libssl-dev \
