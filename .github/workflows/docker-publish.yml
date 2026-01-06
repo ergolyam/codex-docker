@@ -130,7 +130,7 @@ jobs:
           for t in ${{ matrix.tags }}; do
             podman manifest rm "${IMAGE}:${t}" 2>/dev/null || true
             podman manifest create "${IMAGE}:${t}"
-            podman manifest add "${IMAGE}:${t}" "${AMD}"
-            podman manifest add "${IMAGE}:${t}" "${ARM}"
+            podman manifest add "${IMAGE}:${t}" "containers-storage:${AMD}"
+            podman manifest add "${IMAGE}:${t}" "containers-storage:${ARM}"
             podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
           done
