@@ -15,26 +15,40 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # alpine
           - dist: alpine
-            rust_image: rust:alpine
+            build_image: rust:alpine
             base_image: alpine:latest
             arch: amd64
             runs_on: ubuntu-latest
           - dist: alpine
-            rust_image: rust:alpine
+            build_image: rust:alpine
             base_image: alpine:latest
             arch: arm64
             runs_on: ubuntu-24.04-arm
+          # debian
           - dist: debian
-            rust_image: rust:slim-trixie
+            build_image: rust:slim-trixie
             base_image: debian:trixie-slim
             arch: amd64
             runs_on: ubuntu-latest
           - dist: debian
-            rust_image: rust:slim-trixie
+            build_image: rust:slim-trixie
             base_image: debian:trixie-slim
             arch: arm64
             runs_on: ubuntu-24.04-arm
+          # fedora
+          - dist: fedora
+            build_image: quay.io/fedora/fedora-minimal:latest
+            base_image: quay.io/fedora/fedora-minimal:latest
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: fedora
+            build_image: quay.io/fedora/fedora-minimal:latest
+            base_image: quay.io/fedora/fedora-minimal:latest
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+
 
     runs-on: ${{ matrix.runs_on }}
 
@@ -65,7 +79,7 @@ jobs:
           containerfiles: ./dockerfile
           build-args: |
             DIST=${{ matrix.dist }}
-            RUST_IMAGE=${{ matrix.rust_image }}
+            BUILD_IMAGE=${{ matrix.build_image }}
             BASE_IMAGE=${{ matrix.base_image }}
 
       - name: Save OCI archive

@@ -32,6 +32,25 @@ case "${DISTRO}-${TARGET}" in
         ca-certificates || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
+    fedora-builder)
+      dnf -y install \
+        gcc \
+        gcc-c++ \
+        make \
+        cargo \
+        pkgconf-pkg-config \
+        git \
+        perl \
+        openssl-devel || exit 1
+      dnf -y clean all
+      rm -rf /var/cache/dnf
+      ;;
+    fedora-main)
+      dnf -y install \
+        ca-certificates || exit 1
+      dnf -y clean all
+      rm -rf /var/cache/dnf
+      ;;
 esac
 
 echo "Cleaning up: removing $0"
