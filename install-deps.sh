@@ -6,6 +6,7 @@ case "${DISTRO}" in
     alpine)
       apk add --no-cache \
         build-base \
+        pkgconf \
         git \
         perl \
         openssl-dev || exit 1
