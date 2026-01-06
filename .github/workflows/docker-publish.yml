@@ -1,12 +1,15 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Main Images
 
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'readme.md'
+    paths:
+      - .github/workflows/docker-publish.yml
+      - dockerfile
   workflow_dispatch:
+  repository_dispatch:
+    types: [docker-publish]
 
 jobs:
   build:
@@ -17,35 +20,29 @@ jobs:
         include:
           # alpine
           - dist: alpine
-            build_image: docker.io/rust:alpine
-            base_image: docker.io/alpine:latest
+            image: docker.io/alpine:latest
             arch: amd64
             runs_on: ubuntu-latest
           - dist: alpine
-            build_image: docker.io/rust:alpine
-            base_image: docker.io/alpine:latest
+            image: docker.io/alpine:latest
             arch: arm64
             runs_on: ubuntu-24.04-arm
           # debian
           - dist: debian
-            build_image: docker.io/rust:slim-trixie
-            base_image: docker.io/debian:trixie-slim
+            image: docker.io/debian:trixie-slim
             arch: amd64
             runs_on: ubuntu-latest
           - dist: debian
-            build_image: docker.io/rust:slim-trixie
-            base_image: docker.io/debian:trixie-slim
+            image: docker.io/debian:trixie-slim
             arch: arm64
             runs_on: ubuntu-24.04-arm
           # fedora
           - dist: fedora
-            build_image: quay.io/fedora/fedora-minimal:latest
-            base_image: quay.io/fedora/fedora-minimal:latest
+            image: quay.io/fedora/fedora-minimal:latest
             arch: amd64
             runs_on: ubuntu-latest
           - dist: fedora
-            build_image: quay.io/fedora/fedora-minimal:latest
-            base_image: quay.io/fedora/fedora-minimal:latest
+            image: quay.io/fedora/fedora-minimal:latest
             arch: arm64
             runs_on: ubuntu-24.04-arm
 
@@ -79,8 +76,7 @@ jobs:
           containerfiles: ./dockerfile
           build-args: |
             DIST=${{ matrix.dist }}
-            BUILD_IMAGE=${{ matrix.build_image }}
-            BASE_IMAGE=${{ matrix.base_image }}
+            IMAGE=${{ matrix.image }}
 
       - name: Save OCI archive
         run: |
