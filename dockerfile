@@ -1,8 +1,8 @@
 ARG DIST=alpine
-ARG RUST_IMAGE=rust:alpine
+ARG BUILD_IMAGE=rust:alpine
 ARG BASE_IMAGE=alpine:latest
 
-FROM docker.io/${RUST_IMAGE} AS builder
+FROM docker.io/${BUILD_IMAGE} AS builder
 
 ARG DIST
 
