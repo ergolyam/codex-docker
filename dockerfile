@@ -2,7 +2,7 @@ ARG DIST=alpine
 ARG BUILD_IMAGE=rust:alpine
 ARG BASE_IMAGE=alpine:latest
 
-FROM docker.io/${BUILD_IMAGE} AS builder
+FROM ${BUILD_IMAGE} AS builder
 
 ARG DIST
 
@@ -16,7 +16,7 @@ WORKDIR /build
 RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
 
 
-FROM docker.io/${BASE_IMAGE} as main
+FROM ${BASE_IMAGE} as main
 
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST} main

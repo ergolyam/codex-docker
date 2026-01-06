@@ -17,24 +17,24 @@ jobs:
         include:
           # alpine
           - dist: alpine
-            build_image: rust:alpine
-            base_image: alpine:latest
+            build_image: docker.io/rust:alpine
+            base_image: docker.io/alpine:latest
             arch: amd64
             runs_on: ubuntu-latest
           - dist: alpine
-            build_image: rust:alpine
-            base_image: alpine:latest
+            build_image: docker.io/rust:alpine
+            base_image: docker.io/alpine:latest
             arch: arm64
             runs_on: ubuntu-24.04-arm
           # debian
           - dist: debian
-            build_image: rust:slim-trixie
-            base_image: debian:trixie-slim
+            build_image: docker.io/rust:slim-trixie
+            base_image: docker.io/debian:trixie-slim
             arch: amd64
             runs_on: ubuntu-latest
           - dist: debian
-            build_image: rust:slim-trixie
-            base_image: debian:trixie-slim
+            build_image: docker.io/rust:slim-trixie
+            base_image: docker.io/debian:trixie-slim
             arch: arm64
             runs_on: ubuntu-24.04-arm
           # fedora
