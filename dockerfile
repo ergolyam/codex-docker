@@ -4,6 +4,8 @@ ARG BASE_IMAGE=alpine:latest
 
 FROM docker.io/${RUST_IMAGE} AS builder
 
+ARG DIST
+
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST}
 
