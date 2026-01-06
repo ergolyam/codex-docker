@@ -1,4 +1,6 @@
-FROM ${BASE_IMAGE} as main
+ARG IMAGE
+
+FROM ${IMAGE} as main
 
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST} main
