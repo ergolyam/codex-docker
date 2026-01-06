@@ -101,6 +101,7 @@ jobs:
         with:
           pattern: image-${{ matrix.dist }}-*
           path: in
+          merge-multiple: true
 
       - name: Load images into local storage
         run: |
