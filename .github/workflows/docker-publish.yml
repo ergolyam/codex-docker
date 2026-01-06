@@ -108,6 +108,8 @@ jobs:
             tags: "latest alpine"
           - dist: debian
             tags: "debian"
+          - dist: fedora
+            tags: "fedora"
 
     steps:
       - name: Download OCI archives
