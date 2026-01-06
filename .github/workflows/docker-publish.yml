@@ -1,0 +1,58 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'readme.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dist: alpine
+            rust_image: rust:alpine
+            base_image: alpine:latest
+            tags: "latest alpine"
+          - dist: debian
+            rust_image: rust:slim-trixie
+            base_image: debian:trixie-slim
+            tags: "debian"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Container image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ghcr.io/${{ github.repository }}
+          tags: ${{ matrix.tags }}
+          containerfiles: ./dockerfile
+          build-args: |
+            DIST=${{ matrix.dist }}
+            RUST_IMAGE=${{ matrix.rust_image }}
+            BASE_IMAGE=${{ matrix.base_image }}
+
+      - name: Push image to GHCR
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ghcr.io/${{ github.repository }}
+          tags: ${{ matrix.tags }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
