@@ -26,6 +26,14 @@ jobs:
             tags: "debian"
 
     steps:
+      - name: zram
+        run: |
+          sudo apt install -y linux-modules-extra-$(uname -r)
+          sudo modprobe zram
+          dev=$(sudo zramctl --find --algorithm zstd --size 32G)
+          sudo mkswap $dev
+          sudo swapon --priority 100 $dev
+
       - name: Checkout code
         uses: actions/checkout@v3
 
