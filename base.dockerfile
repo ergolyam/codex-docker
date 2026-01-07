@@ -18,4 +18,4 @@ RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
 
 FROM scratch as base
 
-COPY --from=builder /build/codex-rs/target/release/codex /usr/bin
+COPY --from=builder /build/codex-rs/target/release/codex /usr/bin/codex
