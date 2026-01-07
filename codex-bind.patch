@@ -1,0 +1,13 @@
+diff --git a/codex-rs/login/src/server.rs b/codex-rs/login/src/server.rs
+index 999c190..2c6b8fd 100644
+--- a/codex-rs/login/src/server.rs
++++ b/codex-rs/login/src/server.rs
+@@ -441,7 +441,7 @@ fn send_cancel_request(port: u16) -> io::Result<()> {
+ }
+ 
+ fn bind_server(port: u16) -> io::Result<Server> {
+-    let bind_address = format!("127.0.0.1:{port}");
++    let bind_address = format!("0.0.0.0:{port}");
+     let mut cancel_attempted = false;
+     let mut attempts = 0;
+     const MAX_ATTEMPTS: u32 = 10;

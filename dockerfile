@@ -13,6 +13,10 @@ RUN git clone https://github.com/openai/codex -b rust-v0.77.0 /build
 
 WORKDIR /build
 
+COPY codex-bind.patch ./codex-bind.patch
+
+RUN git apply codex-bind.patch
+
 RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
 
 
