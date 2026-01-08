@@ -31,4 +31,4 @@ ENV CODEX_HOME=/data
 
 WORKDIR /work
 
-CMD [ "codex" ]
+ENTRYPOINT [ "/usr/bin/codex" ]
