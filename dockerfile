@@ -9,7 +9,7 @@ ARG DIST
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST} builder
 
-RUN git clone https://github.com/openai/codex -b rust-v0.79.0 /build
+RUN git clone https://github.com/openai/codex -b rust-v0.80.0 /build
 
 WORKDIR /build
 
