@@ -52,6 +52,7 @@ This project builds a **small container image for the Codex CLI** (from the offi
 | `DIST`        | Base distro selector used by `install-deps.sh` (`alpine`, `debian`, `fedora`). |
 | `BUILD_IMAGE` | Builder image (Rust toolchain).                                                |
 | `BASE_IMAGE`  | Runtime image (minimal OS for the final layer).                                |
+| `CODEX_TAG`   | Upstream `openai/codex` tag to build (default: `rust-v0.80.0`).                |
 
 ## Environment Variables
 

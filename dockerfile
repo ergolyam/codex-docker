@@ -1,15 +1,17 @@
 ARG DIST=alpine
 ARG BUILD_IMAGE=rust:alpine
 ARG BASE_IMAGE=alpine:latest
+ARG CODEX_TAG=rust-v0.80.0
 
 FROM ${BUILD_IMAGE} AS builder
 
 ARG DIST
+ARG CODEX_TAG
 
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST} builder
 
-RUN git clone https://github.com/openai/codex -b rust-v0.80.0 /build
+RUN git clone https://github.com/openai/codex -b ${CODEX_TAG} /build
 
 WORKDIR /build
 

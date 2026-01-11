@@ -6,11 +6,76 @@ on:
       - main
     paths-ignore:
       - 'readme.md'
+  schedule:
+    - cron: '0 3 */2 * *'
   workflow_dispatch:
 
 jobs:
+  check_tag:
+    name: Check latest codex tag
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.latest.outputs.latest_tag }}
+      prev_tag: ${{ steps.prev.outputs.prev_tag }}
+      should_build: ${{ steps.decide.outputs.should_build }}
+    steps:
+      - name: Fetch latest tag from openai/codex
+        id: latest
+        run: |
+          set -euo pipefail
+          latest="$(git ls-remote --tags https://github.com/openai/codex.git \
+            | awk -F/ '{print $NF}' \
+            | sed 's/\^{}//' \
+            | grep -E '^rust-v[0-9]+(\.[0-9]+)*$' \
+            | sort -u -V \
+            | tail -n1)"
+          echo "latest_tag=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cached tag
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: codex-tag-${{ steps.latest.outputs.latest_tag }}
+          restore-keys: |
+            codex-tag-
+
+      - name: Read previous tag
+        id: prev
+        run: |
+          set -euo pipefail
+          if [ -f .cache/codex_tag.txt ]; then
+            prev="$(cat .cache/codex_tag.txt)"
+          else
+            prev=""
+          fi
+          echo "prev_tag=$prev" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to build
+        id: decide
+        run: |
+          set -euo pipefail
+          latest="${{ steps.latest.outputs.latest_tag }}"
+          prev="${{ steps.prev.outputs.prev_tag }}"
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$prev" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$latest" != "$prev" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decision summary
+        run: |
+          echo "Latest tag: ${{ steps.latest.outputs.latest_tag }}"
+          echo "Cached tag: ${{ steps.prev.outputs.prev_tag }}"
+          echo "Should build: ${{ steps.decide.outputs.should_build }}"
+
   build:
     name: Build ${{ matrix.dist }} ${{ matrix.arch }}
+    needs: check_tag
+    if: needs.check_tag.outputs.should_build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +146,7 @@ jobs:
             DIST=${{ matrix.dist }}
             BUILD_IMAGE=${{ matrix.build_image }}
             BASE_IMAGE=${{ matrix.base_image }}
+            CODEX_TAG=${{ needs.check_tag.outputs.latest_tag }}
 
       - name: Save OCI archive
         run: |
@@ -147,3 +213,17 @@ jobs:
             podman manifest add "${IMAGE}:${t}" "containers-storage:${ARM}"
             podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
           done
+
+      - name: Save latest tag cache
+        if: ${{ needs.build.result == 'success' }}
+        run: |
+          set -euo pipefail
+          mkdir -p .cache
+          echo "${{ needs.check_tag.outputs.latest_tag }}" > .cache/codex_tag.txt
+
+      - name: Persist tag cache
+        if: ${{ needs.build.result == 'success' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .cache
+          key: codex-tag-${{ needs.check_tag.outputs.latest_tag }}
