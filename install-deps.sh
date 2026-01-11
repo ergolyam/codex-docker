@@ -14,7 +14,8 @@ case "${DISTRO}-${TARGET}" in
       ;;
     alpine-main)
       apk add --no-cache \
-        ca-certificates || exit 1
+        ca-certificates \
+        ripgrep || exit 1
       ;;
     debian-builder)
       apt-get update -y
@@ -29,7 +30,8 @@ case "${DISTRO}-${TARGET}" in
     debian-main)
       apt-get update -y
       apt-get install -y --no-install-recommends \
-        ca-certificates || exit 1
+        ca-certificates \
+        ripgrep || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
     fedora-builder)
@@ -47,7 +49,8 @@ case "${DISTRO}-${TARGET}" in
       ;;
     fedora-main)
       dnf -y install \
-        ca-certificates || exit 1
+        ca-certificates \
+        ripgrep || exit 1
       dnf -y clean all
       rm -rf /var/cache/dnf
       ;;
