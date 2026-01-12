@@ -164,7 +164,9 @@ jobs:
 
   manifest:
     name: Manifest push ${{ matrix.dist }}
-    needs: build
+    needs:
+      - build
+      - check_tag
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
