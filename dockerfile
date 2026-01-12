@@ -29,6 +29,8 @@ RUN cp /cargo-cache/target/release/codex /build-out/codex
 
 FROM ${BASE_IMAGE} as main
 
+ARG DIST
+
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh ${DIST} main
 
