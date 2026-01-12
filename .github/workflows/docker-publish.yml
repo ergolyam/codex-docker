@@ -129,6 +129,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Restore Cargo cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}
+          key: cargo-${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: |
+            cargo-${{ matrix.dist }}-${{ matrix.arch }}-
+
+      - name: Ensure Cargo cache dir exists
+        run: |
+          mkdir -p ".cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}"
+
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
         with:
@@ -142,6 +154,8 @@ jobs:
           image: ghcr.io/${{ github.repository }}
           tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
           containerfiles: ./dockerfile
+          extra-args: |
+            --volume ${{ github.workspace }}/.cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}:/cargo-cache:rw,U
           build-args: |
             DIST=${{ matrix.dist }}
             BUILD_IMAGE=${{ matrix.build_image }}
