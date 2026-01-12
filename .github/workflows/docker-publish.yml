@@ -164,9 +164,7 @@ jobs:
 
   manifest:
     name: Manifest push ${{ matrix.dist }}
-    needs:
-      - build
-      - check_tag
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -216,15 +214,21 @@ jobs:
             podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
           done
 
+  save_cache:
+    name: Save latest codex tag cache
+    needs:
+      - manifest
+      - check_tag
+    runs-on: ubuntu-latest
+    if: ${{ needs.manifest.result == 'success' }}
+    steps:
       - name: Save latest tag cache
-        if: ${{ needs.build.result == 'success' }}
         run: |
           set -euo pipefail
           mkdir -p .cache
           echo "${{ needs.check_tag.outputs.latest_tag }}" > .cache/codex_tag.txt
 
       - name: Persist tag cache
-        if: ${{ needs.build.result == 'success' }}
         uses: actions/cache/save@v4
         with:
           path: .cache
