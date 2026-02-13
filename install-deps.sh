@@ -11,7 +11,8 @@ case "${DISTRO}-${TARGET}" in
         git \
         perl \
         openssl-dev \
-        libcap-dev || exit 1
+        libcap-dev \
+        libcap-static || exit 1
       ;;
     alpine-main)
       apk add --no-cache \
