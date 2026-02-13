@@ -10,7 +10,8 @@ case "${DISTRO}-${TARGET}" in
         pkgconf \
         git \
         perl \
-        openssl-dev || exit 1
+        openssl-dev \
+        libcap-dev || exit 1
       ;;
     alpine-main)
       apk add --no-cache \
@@ -24,7 +25,8 @@ case "${DISTRO}-${TARGET}" in
         pkg-config \
         git \
         perl \
-        libssl-dev || exit 1
+        libssl-dev \
+        libcap-dev || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
     debian-main)
@@ -43,7 +45,8 @@ case "${DISTRO}-${TARGET}" in
         pkgconf-pkg-config \
         git \
         perl \
-        openssl-devel || exit 1
+        openssl-devel \
+        libcap-devel || exit 1
       dnf -y clean all
       rm -rf /var/cache/dnf
       ;;
