@@ -121,10 +121,27 @@ jobs:
       - name: zram
         run: |
           sudo apt install -y linux-modules-extra-$(uname -r)
+
+          for dev in $(zramctl --noheadings -o NAME 2>/dev/null || true); do
+            echo "Disabling /dev/$dev"
+            sudo swapoff "/dev/$dev" || echo "swapoff failed for $dev"
+            echo "Resetting /dev/$dev"
+            sudo zramctl --reset "/dev/$dev" || echo "reset failed for $dev"
+          done
+
+          sudo modprobe -r zram || echo "modprobe -r failed"
           sudo modprobe zram
+
+          echo "Creating new zram device"
           dev=$(sudo zramctl --find --algorithm zstd --size 32G)
+
+          echo "Created $dev"
           sudo mkswap $dev
           sudo swapon --priority 100 $dev
+
+          echo "Final state:"
+          swapon --show
+          zramctl
 
       - name: Checkout code
         uses: actions/checkout@v3
