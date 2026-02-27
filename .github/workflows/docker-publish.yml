@@ -120,6 +120,7 @@ jobs:
     steps:
       - name: zram
         run: |
+          sudo apt update
           sudo apt install -y linux-modules-extra-$(uname -r)
 
           for dev in $(zramctl --noheadings -o NAME 2>/dev/null || true); do
