@@ -13,11 +13,12 @@ case "${DISTRO}-${TARGET}" in
         openssl-dev \
         libcap-dev \
         libcap-static \
-        curl || exit 1
+        python3 || exit 1
       ;;
     alpine-main)
       apk add --no-cache \
         ca-certificates \
+        bubblewrap \
         ripgrep || exit 1
       ;;
     debian-builder)
@@ -29,13 +30,14 @@ case "${DISTRO}-${TARGET}" in
         perl \
         libssl-dev \
         libcap-dev \
-        curl || exit 1
+        python3 || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
     debian-main)
       apt-get update -y
       apt-get install -y --no-install-recommends \
         ca-certificates \
+        bubblewrap \
         ripgrep || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
@@ -49,13 +51,15 @@ case "${DISTRO}-${TARGET}" in
         git \
         perl \
         openssl-devel \
-        libcap-devel || exit 1
+        libcap-devel \
+        python3 || exit 1
       dnf -y clean all
       rm -rf /var/cache/dnf
       ;;
     fedora-main)
       dnf -y install \
         ca-certificates \
+        bubblewrap \
         ripgrep || exit 1
       dnf -y clean all
       rm -rf /var/cache/dnf
