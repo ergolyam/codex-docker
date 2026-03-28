@@ -12,7 +12,8 @@ case "${DISTRO}-${TARGET}" in
         perl \
         openssl-dev \
         libcap-dev \
-        libcap-static || exit 1
+        libcap-static \
+        curl || exit 1
       ;;
     alpine-main)
       apk add --no-cache \
@@ -27,7 +28,8 @@ case "${DISTRO}-${TARGET}" in
         git \
         perl \
         libssl-dev \
-        libcap-dev || exit 1
+        libcap-dev \
+        curl || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
     debian-main)
