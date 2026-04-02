@@ -19,10 +19,12 @@ RUN git clone https://github.com/openai/codex -b ${CODEX_TAG} /build
 WORKDIR /build
 
 COPY codex-bind.patch ./codex-bind.patch
+COPY setup-alpine-rusty-v8.sh ./setup-alpine-rusty-v8.sh
 
 RUN git apply codex-bind.patch
 
 RUN mkdir -p /build-out /cargo-cache/cargo /cargo-cache/target
+RUN [ "${DIST}" = "alpine" ] && sh ./setup-alpine-rusty-v8.sh
 RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
 RUN cp /cargo-cache/target/release/codex /build-out/codex
 
