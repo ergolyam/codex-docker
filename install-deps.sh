@@ -19,7 +19,8 @@ case "${DISTRO}-${TARGET}" in
       apk add --no-cache \
         ca-certificates \
         bubblewrap \
-        ripgrep || exit 1
+        ripgrep \
+        git || exit 1
       ;;
     debian-builder)
       apt-get update -y
@@ -38,7 +39,8 @@ case "${DISTRO}-${TARGET}" in
       apt-get install -y --no-install-recommends \
         ca-certificates \
         bubblewrap \
-        ripgrep || exit 1
+        ripgrep \
+        git || exit 1
       rm -rf /var/lib/apt/lists/*
       ;;
     fedora-builder)
@@ -60,7 +62,8 @@ case "${DISTRO}-${TARGET}" in
       dnf -y install \
         ca-certificates \
         bubblewrap \
-        ripgrep || exit 1
+        ripgrep \
+        git || exit 1
       dnf -y clean all
       rm -rf /var/cache/dnf
       ;;
