@@ -1,73 +1,22 @@
 #!/usr/bin/env sh
 
-DISTRO="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-TARGET="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+set -eu
 
-case "${DISTRO}-${TARGET}" in
-    alpine-builder)
-      apk add --no-cache \
-        build-base \
-        pkgconf \
-        git \
-        perl \
-        openssl-dev \
-        libcap-dev \
-        libcap-static \
-        python3 || exit 1
-      ;;
-    alpine-main)
-      apk add --no-cache \
-        ca-certificates \
-        bubblewrap \
-        ripgrep \
-        git || exit 1
-      ;;
-    debian-builder)
-      apt-get update -y
-      apt-get install -y --no-install-recommends \
-        build-essential \
-        pkg-config \
-        git \
-        perl \
-        libssl-dev \
-        libcap-dev \
-        python3 || exit 1
-      rm -rf /var/lib/apt/lists/*
-      ;;
-    debian-main)
-      apt-get update -y
-      apt-get install -y --no-install-recommends \
-        ca-certificates \
-        bubblewrap \
-        ripgrep \
-        git || exit 1
-      rm -rf /var/lib/apt/lists/*
-      ;;
-    fedora-builder)
-      dnf -y install \
-        gcc \
-        gcc-c++ \
-        make \
-        cargo \
-        pkgconf-pkg-config \
-        git \
-        perl \
-        openssl-devel \
-        libcap-devel \
-        python3 || exit 1
-      dnf -y clean all
-      rm -rf /var/cache/dnf
-      ;;
-    fedora-main)
-      dnf -y install \
-        ca-certificates \
-        bubblewrap \
-        ripgrep \
-        git || exit 1
-      dnf -y clean all
-      rm -rf /var/cache/dnf
-      ;;
-esac
+PACKAGES="ca-certificates bubblewrap ripgrep git"
+
+if command -v apk; then
+  apk add --no-cache ${PACKAGES}
+elif command -v apt-get; then
+  apt-get update
+  apt-get install -y --no-install-recommends ${PACKAGES}
+  rm -rf /var/lib/apt/lists/*
+elif command -v dnf; then
+  dnf install -y ${PACKAGES}
+  dnf clean all
+else
+  echo "Unsupported distro"
+  exit 1
+fi
 
 echo "Cleaning up: removing $0"
 rm -f -- "$0"
