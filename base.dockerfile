@@ -26,9 +26,10 @@ RUN git apply codex-bind.patch
 COPY setup-alpine-rusty-v8.sh ./setup-alpine-rusty-v8.sh
 RUN ./setup-alpine-rusty-v8.sh
 
-RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release
+RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release \
+    && cp /cargo-cache/target/release/codex /codex
 
 
 FROM scratch AS main
 
-COPY --from=builder /cargo-cache/target/release/codex /codex
+COPY --from=builder /codex /codex
