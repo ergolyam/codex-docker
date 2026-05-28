@@ -13,7 +13,7 @@ RUN apk add --no-cache \
     openssl-dev \
     libcap-dev \
     libcap-static \
-    python
+    python3
 
 WORKDIR /build
 

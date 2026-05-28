@@ -10,16 +10,26 @@ on:
     - cron: '0 21 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
 jobs:
-  check_tag:
-    name: Check latest codex tag
+  metadata:
+    name: Metadata
     runs-on: ubuntu-latest
     outputs:
       latest_tag: ${{ steps.latest.outputs.latest_tag }}
       prev_tag: ${{ steps.prev.outputs.prev_tag }}
       should_build: ${{ steps.decide.outputs.should_build }}
+      image_name: ${{ steps.tags.outputs.image_name }}
+      base_image_ref: ${{ steps.tags.outputs.base_image_ref }}
+
     steps:
-      - name: Fetch latest tag from openai/codex
+      - name: Fetch latest codex tag
         id: latest
         run: |
           set -euo pipefail
@@ -32,7 +42,7 @@ jobs:
           echo "latest_tag=$latest" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached tag
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: .cache
           key: codex-tag-${{ steps.latest.outputs.latest_tag }}
@@ -66,59 +76,37 @@ jobs:
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Prepare image tags
+        id: tags
+        run: |
+          echo "image_name=${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
+          echo "base_image_ref=${{ env.IMAGE_NAME }}:base-${{ steps.latest.outputs.latest_tag }}" >> "$GITHUB_OUTPUT"
+
       - name: Decision summary
         run: |
           echo "Latest tag: ${{ steps.latest.outputs.latest_tag }}"
           echo "Cached tag: ${{ steps.prev.outputs.prev_tag }}"
           echo "Should build: ${{ steps.decide.outputs.should_build }}"
+          echo "Base image: ${{ steps.tags.outputs.base_image_ref }}"
 
-  build:
-    name: Build ${{ matrix.dist }} ${{ matrix.arch }}
-    needs: check_tag
-    if: needs.check_tag.outputs.should_build == 'true'
+  build-base:
+    name: Build base image ${{ matrix.arch }}
+    needs: metadata
+    if: needs.metadata.outputs.should_build == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          # alpine
-          - dist: alpine
-            build_image: docker.io/rust:alpine
-            base_image: docker.io/alpine:latest
-            arch: amd64
+          - arch: amd64
             runs_on: ubuntu-latest
-          - dist: alpine
-            build_image: docker.io/rust:alpine
-            base_image: docker.io/alpine:latest
-            arch: arm64
+          - arch: arm64
             runs_on: ubuntu-24.04-arm
-          # debian
-          - dist: debian
-            build_image: docker.io/rust:slim-trixie
-            base_image: docker.io/debian:trixie-slim
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: debian
-            build_image: docker.io/rust:slim-trixie
-            base_image: docker.io/debian:trixie-slim
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-          # fedora
-          - dist: fedora
-            build_image: quay.io/fedora/fedora-minimal:latest
-            base_image: quay.io/fedora/fedora-minimal:latest
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: fedora
-            build_image: quay.io/fedora/fedora-minimal:latest
-            base_image: quay.io/fedora/fedora-minimal:latest
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-
-
     runs-on: ${{ matrix.runs_on }}
+    outputs:
+      base_image_ref: ${{ steps.base_image.outputs.base_image_ref }}
 
     steps:
-      - name: zram
+      - name: Set up zram
         run: |
           sudo apt update
           sudo apt install -y linux-modules-extra-$(uname -r)
@@ -145,19 +133,18 @@ jobs:
           zramctl
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Restore Cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
-          path: .cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}
-          key: cargo-${{ matrix.dist }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: .cache/cargo/alpine-${{ matrix.arch }}
+          key: cargo-alpine-${{ matrix.arch }}-${{ github.run_id }}
           restore-keys: |
-            cargo-${{ matrix.dist }}-${{ matrix.arch }}-
+            cargo-alpine-${{ matrix.arch }}-
 
       - name: Ensure Cargo cache dir exists
-        run: |
-          mkdir -p ".cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}"
+        run: mkdir -p ".cache/cargo/alpine-${{ matrix.arch }}"
 
       - name: Log in to GitHub Container Registry
         uses: redhat-actions/podman-login@v1
@@ -166,37 +153,96 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Container image
+      - name: Build base image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: ghcr.io/${{ github.repository }}
+          image: ${{ needs.metadata.outputs.image_name }}
+          tags: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}
+          containerfiles: ./base.dockerfile
+          extra-args: |
+            --volume ${{ github.workspace }}/.cache/cargo/alpine-${{ matrix.arch }}:/cargo-cache:rw,U
+          build-args: |
+            VERSION=${{ needs.metadata.outputs.latest_tag }}
+
+      - name: Push base image
+        run: podman push "${{ needs.metadata.outputs.base_image_ref }}-${{ matrix.arch }}"
+
+      - name: Export base image ref
+        id: base_image
+        run: echo "base_image_ref=${{ needs.metadata.outputs.base_image_ref }}" >> "$GITHUB_OUTPUT"
+
+  build-distro:
+    name: Build ${{ matrix.dist }} ${{ matrix.arch }}
+    needs:
+      - metadata
+      - build-base
+    if: needs.metadata.outputs.should_build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # alpine
+          - dist: alpine
+            final_image: docker.io/alpine:latest
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: alpine
+            final_image: docker.io/alpine:latest
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+          # debian
+          - dist: debian
+            final_image: docker.io/debian:trixie-slim
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: debian
+            final_image: docker.io/debian:trixie-slim
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+          # fedora
+          - dist: fedora
+            final_image: quay.io/fedora/fedora-minimal:latest
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: fedora
+            final_image: quay.io/fedora/fedora-minimal:latest
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs_on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build distro image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ needs.metadata.outputs.image_name }}
           tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
           containerfiles: ./dockerfile
-          extra-args: |
-            --volume ${{ github.workspace }}/.cache/cargo/${{ matrix.dist }}-${{ matrix.arch }}:/cargo-cache:rw,U
           build-args: |
             DIST=${{ matrix.dist }}
-            BUILD_IMAGE=${{ matrix.build_image }}
-            BASE_IMAGE=${{ matrix.base_image }}
-            CODEX_TAG=${{ needs.check_tag.outputs.latest_tag }}
+            FINAL_IMAGE=${{ matrix.final_image }}
+            BASE_IMAGE=${{ needs.build-base.outputs.base_image_ref }}-${{ matrix.arch }}
 
       - name: Save OCI archive
         run: |
           mkdir -p out
-          podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
+          podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "${{ needs.metadata.outputs.image_name }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
 
       - name: Upload OCI archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: image-${{ matrix.dist }}-${{ matrix.arch }}
           path: out/${{ matrix.dist }}-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
 
-
-  manifest:
-    name: Manifest push ${{ matrix.dist }}
-    needs: build
+  publish-distro:
+    name: Publish ${{ matrix.dist }} manifest
+    needs:
+      - metadata
+      - build-distro
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -211,7 +257,7 @@ jobs:
 
     steps:
       - name: Download OCI archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: image-${{ matrix.dist }}-*
           path: in
@@ -246,22 +292,23 @@ jobs:
             podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
           done
 
-  save_cache:
+  save-cache:
     name: Save latest codex tag cache
     needs:
-      - manifest
-      - check_tag
+      - metadata
+      - publish-distro
     runs-on: ubuntu-latest
-    if: ${{ needs.manifest.result == 'success' }}
+    if: ${{ needs.publish-distro.result == 'success' }}
+
     steps:
       - name: Save latest tag cache
         run: |
           set -euo pipefail
           mkdir -p .cache
-          echo "${{ needs.check_tag.outputs.latest_tag }}" > .cache/codex_tag.txt
+          echo "${{ needs.metadata.outputs.latest_tag }}" > .cache/codex_tag.txt
 
       - name: Persist tag cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .cache
-          key: codex-tag-${{ needs.check_tag.outputs.latest_tag }}
+          key: codex-tag-${{ needs.metadata.outputs.latest_tag }}
