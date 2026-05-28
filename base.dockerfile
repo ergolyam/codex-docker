@@ -18,7 +18,7 @@ RUN apk add --no-cache \
 WORKDIR /build
 
 RUN wget -qO - https://github.com/openai/codex/archive/refs/tags/${VERSION}.tar.gz | \
-    tar xzv -f - --strip-components=1
+    tar xz -f - --strip-components=1
 
 COPY codex-bind.patch ./codex-bind.patch
 RUN git apply codex-bind.patch

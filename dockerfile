@@ -1,15 +1,13 @@
 ARG FINAL_IMAGE
-
 FROM ${FINAL_IMAGE} as main
 
 ARG DIST
-
 ARG BASE_IMAGE
 
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
-COPY --from=${BASE_IMAGE} /codex /usr/bin
+COPY --from=${BASE_IMAGE} /codex /usr/bin/codex
 
 ENV CODEX_HOME=/data
 
