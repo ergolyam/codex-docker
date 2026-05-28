@@ -26,7 +26,6 @@ jobs:
       prev_tag: ${{ steps.prev.outputs.prev_tag }}
       should_build: ${{ steps.decide.outputs.should_build }}
       image_name: ${{ steps.tags.outputs.image_name }}
-      base_image_ref: ${{ steps.tags.outputs.base_image_ref }}
 
     steps:
       - name: Fetch latest codex tag
@@ -80,14 +79,12 @@ jobs:
         id: tags
         run: |
           echo "image_name=${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
-          echo "base_image_ref=${{ env.IMAGE_NAME }}:base-${{ steps.latest.outputs.latest_tag }}" >> "$GITHUB_OUTPUT"
 
       - name: Decision summary
         run: |
           echo "Latest tag: ${{ steps.latest.outputs.latest_tag }}"
           echo "Cached tag: ${{ steps.prev.outputs.prev_tag }}"
           echo "Should build: ${{ steps.decide.outputs.should_build }}"
-          echo "Base image: ${{ steps.tags.outputs.base_image_ref }}"
 
   build-base:
     name: Build base image ${{ matrix.arch }}
@@ -102,8 +99,6 @@ jobs:
           - arch: arm64
             runs_on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs_on }}
-    outputs:
-      base_image_ref: ${{ steps.base_image.outputs.base_image_ref }}
 
     steps:
       - name: Set up zram
@@ -146,30 +141,29 @@ jobs:
       - name: Ensure Cargo cache dir exists
         run: mkdir -p ".cache/cargo/alpine-${{ matrix.arch }}"
 
-      - name: Log in to GitHub Container Registry
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build base image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: ${{ needs.metadata.outputs.image_name }}
-          tags: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}
+          image: localhost/codex-base
+          tags: ${{ matrix.arch }}
           containerfiles: ./base.dockerfile
           extra-args: |
             --volume ${{ github.workspace }}/.cache/cargo/alpine-${{ matrix.arch }}:/cargo-cache:rw,U
           build-args: |
             VERSION=${{ needs.metadata.outputs.latest_tag }}
 
-      - name: Push base image
-        run: podman push "${{ needs.metadata.outputs.base_image_ref }}-${{ matrix.arch }}"
+      - name: Save OCI archive
+        run: |
+          mkdir -p out
+          podman save --format oci-archive -o "out/base-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
 
-      - name: Export base image ref
-        id: base_image
-        run: echo "base_image_ref=${{ needs.metadata.outputs.base_image_ref }}" >> "$GITHUB_OUTPUT"
+      - name: Upload OCI archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-base-${{ matrix.arch }}
+          path: out/base-${{ matrix.arch }}.tar
+          retention-days: 1
+          compression-level: 0
 
   build-distro:
     name: Build ${{ matrix.dist }} ${{ matrix.arch }}
@@ -214,6 +208,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Download base OCI archive
+        uses: actions/download-artifact@v8
+        with:
+          name: image-base-${{ matrix.arch }}
+          path: in
+
+      - name: Load base image into local storage
+        run: |
+          set -euo pipefail
+          podman load -i "in/base-${{ matrix.arch }}.tar"
+
       - name: Build distro image
         uses: redhat-actions/buildah-build@v2
         with:
@@ -223,7 +228,7 @@ jobs:
           build-args: |
             DIST=${{ matrix.dist }}
             FINAL_IMAGE=${{ matrix.final_image }}
-            BASE_IMAGE=${{ needs.build-base.outputs.base_image_ref }}-${{ matrix.arch }}
+            BASE_IMAGE=localhost/codex-base:${{ matrix.arch }}
 
       - name: Save OCI archive
         run: |
