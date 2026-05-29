@@ -4,6 +4,8 @@ ARG VERSION
 
 ENV CARGO_HOME=/cargo-cache/cargo
 ENV CARGO_TARGET_DIR=/cargo-cache/target
+ENV CARGO_PROFILE_RELEASE_LTO=thin
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
 
 RUN apk add --no-cache \
     build-base \

@@ -131,10 +131,11 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Restore Cargo cache
-        uses: actions/cache@v5
+        id: restore-cargo-cache
+        uses: actions/cache/restore@v5
         with:
           path: .cache/cargo/alpine-${{ matrix.arch }}
-          key: cargo-alpine-${{ matrix.arch }}-${{ github.run_id }}
+          key: cargo-alpine-${{ matrix.arch }}-${{ needs.metadata.outputs.latest_tag }}
           restore-keys: |
             cargo-alpine-${{ matrix.arch }}-
 
@@ -142,7 +143,7 @@ jobs:
         run: mkdir -p ".cache/cargo/alpine-${{ matrix.arch }}"
 
       - name: Build base image
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
         with:
           image: localhost/codex-base
           tags: ${{ matrix.arch }}
@@ -151,6 +152,13 @@ jobs:
             --volume ${{ github.workspace }}/.cache/cargo/alpine-${{ matrix.arch }}:/cargo-cache:rw,U
           build-args: |
             VERSION=${{ needs.metadata.outputs.latest_tag }}
+
+      - name: Save Cargo cache
+        if: ${{ always() && steps.restore-cargo-cache.outputs.cache-hit != 'true' && steps.restore-cargo-cache.outputs.cache-primary-key != '' }}
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/cargo/alpine-${{ matrix.arch }}
+          key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
 
       - name: Save OCI archive
         run: |
@@ -220,7 +228,7 @@ jobs:
           podman load -i "in/base-${{ matrix.arch }}.tar"
 
       - name: Build distro image
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
         with:
           image: ${{ needs.metadata.outputs.image_name }}
           tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
