@@ -154,7 +154,7 @@ jobs:
             VERSION=${{ needs.metadata.outputs.latest_tag }}
 
       - name: Save Cargo cache
-        if: ${{ always() && steps.restore-cargo-cache.outputs.cache-hit != 'true' && steps.restore-cargo-cache.outputs.cache-primary-key != '' }}
+        if: ${{ always() && !cancelled() && steps.restore-cargo-cache.outputs.cache-hit != 'true' && steps.restore-cargo-cache.outputs.cache-primary-key != '' }}
         uses: actions/cache/save@v5
         with:
           path: .cache/cargo/alpine-${{ matrix.arch }}
