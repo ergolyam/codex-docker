@@ -21,17 +21,28 @@ This project builds a **small container image for the Codex CLI** (from the offi
 
 ## Build & run locally
 
-- Minimal build:
+- Build the Codex binary layer:
     ```bash
-    docker build -t codex-cli -f dockerfile .
+    docker build -t codex-base \
+      --build-arg VERSION=rust-v0.80.0 \
+      -f base.dockerfile .
+    ```
+
+- Build the runnable image:
+    ```bash
+    docker build -t codex-cli \
+      --build-arg DIST=alpine \
+      --build-arg FINAL_IMAGE=alpine:3.23 \
+      --build-arg BASE_IMAGE=codex-base \
+      -f dockerfile .
     ```
 
 - Build with a different base distro:
     ```bash
     docker build -t codex-cli \
       --build-arg DIST=debian \
-      --build-arg BUILD_IMAGE=rust:slim-trixie \
-      --build-arg BASE_IMAGE=debian:trixie-slim \
+      --build-arg FINAL_IMAGE=debian:trixie-slim \
+      --build-arg BASE_IMAGE=codex-base \
       -f dockerfile .
     ```
 
@@ -50,9 +61,9 @@ This project builds a **small container image for the Codex CLI** (from the offi
 | Argument      | Description                                                                    |
 |---------------|--------------------------------------------------------------------------------|
 | `DIST`        | Base distro selector used by `install-deps.sh` (`alpine`, `debian`, `fedora`). |
-| `BUILD_IMAGE` | Builder image (Rust toolchain).                                                |
-| `BASE_IMAGE`  | Runtime image (minimal OS for the final layer).                                |
-| `CODEX_TAG`   | Upstream `openai/codex` tag to build (default: `rust-v0.80.0`).                |
+| `FINAL_IMAGE` | Runtime image (minimal OS for the final layer).                                |
+| `BASE_IMAGE`  | Image that provides the compiled `/codex` binary.                              |
+| `VERSION`     | Upstream `openai/codex` tag to build (example: `rust-v0.80.0`).                |
 
 ## Environment Variables
 
