@@ -284,7 +284,7 @@ jobs:
           done
 
       - name: Log in to GitHub Container Registry
-        uses: redhat-actions/podman-login@v1
+        uses: redhat-actions/podman-login@2e76993ec4585e058ea832c23ee3d885970936af
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
