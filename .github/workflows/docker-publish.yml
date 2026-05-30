@@ -134,13 +134,11 @@ jobs:
         id: restore-cargo-cache
         uses: actions/cache/restore@v5
         with:
-          path: .cache/cargo/alpine-${{ matrix.arch }}
-          key: cargo-alpine-${{ matrix.arch }}-${{ needs.metadata.outputs.latest_tag }}
-          restore-keys: |
-            cargo-alpine-${{ matrix.arch }}-
+          path: ${{ runner.temp }}/.cache
+          key: cargo-cache-${{ matrix.arch }}-${{ needs.metadata.outputs.latest_tag }}-${{ hashFiles('base.dockerfile') }}
 
       - name: Ensure Cargo cache dir exists
-        run: mkdir -p ".cache/cargo/alpine-${{ matrix.arch }}"
+        run: mkdir -p "${RUNNER_TEMP}/.cache"
 
       - name: Build base image
         uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
@@ -149,27 +147,27 @@ jobs:
           tags: ${{ matrix.arch }}
           containerfiles: ./base.dockerfile
           extra-args: |
-            --volume ${{ github.workspace }}/.cache/cargo/alpine-${{ matrix.arch }}:/cargo-cache:rw,U
+            --volume ${{ runner.temp }}/.cache:/cargo-cache:rw,U
           build-args: |
             VERSION=${{ needs.metadata.outputs.latest_tag }}
 
       - name: Save Cargo cache
-        if: ${{ always() && !cancelled() && steps.restore-cargo-cache.outputs.cache-hit != 'true' && steps.restore-cargo-cache.outputs.cache-primary-key != '' }}
+        if: ${{ success() && steps.restore-cargo-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
-          path: .cache/cargo/alpine-${{ matrix.arch }}
+          path: ${{ runner.temp }}/.cache
           key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
 
       - name: Save OCI archive
         run: |
-          mkdir -p out
-          podman save --format oci-archive -o "out/base-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
+          mkdir -p "${RUNNER_TEMP}/out"
+          podman save --format oci-archive -o "${RUNNER_TEMP}/out/base-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
 
       - name: Upload OCI archive
         uses: actions/upload-artifact@v7
         with:
           name: image-base-${{ matrix.arch }}
-          path: out/base-${{ matrix.arch }}.tar
+          path: ${{ runner.temp }}/out/base-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
 
@@ -219,12 +217,10 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: image-base-${{ matrix.arch }}
-          path: in
+          path: ${{ runner.temp }}/in
 
       - name: Load base image into local storage
-        run: |
-          set -euo pipefail
-          podman load -i "in/base-${{ matrix.arch }}.tar"
+        run: podman load -i "${RUNNER_TEMP}/in/base-${{ matrix.arch }}.tar"
 
       - name: Build distro image
         uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
@@ -239,14 +235,14 @@ jobs:
 
       - name: Save OCI archive
         run: |
-          mkdir -p out
-          podman save --format oci-archive -o "out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "${{ needs.metadata.outputs.image_name }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
+          mkdir -p "${RUNNER_TEMP}/out"
+          podman save --format oci-archive -o "${RUNNER_TEMP}/out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "${{ needs.metadata.outputs.image_name }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
 
       - name: Upload OCI archive
         uses: actions/upload-artifact@v7
         with:
           name: image-${{ matrix.dist }}-${{ matrix.arch }}
-          path: out/${{ matrix.dist }}-${{ matrix.arch }}.tar
+          path: ${{ runner.temp }}/out/${{ matrix.dist }}-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
 
@@ -272,14 +268,14 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: image-${{ matrix.dist }}-*
-          path: in
+          path: ${{ runner.temp }}/in
           merge-multiple: true
 
       - name: Load images into local storage
         run: |
           set -euo pipefail
           for arch in amd64 arm64; do
-            podman load -i "in/${{ matrix.dist }}-${arch}.tar"
+            podman load -i "${RUNNER_TEMP}/in/${{ matrix.dist }}-${arch}.tar"
           done
 
       - name: Log in to GitHub Container Registry

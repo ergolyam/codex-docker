@@ -1,9 +1,14 @@
-FROM docker.io/rust:alpine3.23 AS builder
+FROM docker.io/rust:1.95.0-alpine3.23 AS builder
 
 ARG VERSION
 
 ENV CARGO_HOME=/cargo-cache/cargo
 ENV CARGO_TARGET_DIR=/cargo-cache/target
+ENV CARGO_PROFILE_RELEASE_LTO=false
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+ENV RUSTC_WRAPPER=sccache
+ENV SCCACHE_DIR=/cargo-cache/sccache
+ENV SCCACHE_CACHE_SIZE=3G
 
 RUN apk add --no-cache \
     build-base \
@@ -13,7 +18,8 @@ RUN apk add --no-cache \
     openssl-dev \
     libcap-dev \
     libcap-static \
-    python3
+    python3 \
+    sccache
 
 WORKDIR /build
 
@@ -27,6 +33,7 @@ COPY setup-alpine-rusty-v8.sh ./setup-alpine-rusty-v8.sh
 RUN ./setup-alpine-rusty-v8.sh
 
 RUN cargo build --manifest-path=codex-rs/cli/Cargo.toml --release \
+    && sccache --show-stats \
     && cp /cargo-cache/target/release/codex /codex
 
 
