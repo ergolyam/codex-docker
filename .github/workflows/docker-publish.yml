@@ -26,6 +26,7 @@ jobs:
       prev_tag: ${{ steps.prev.outputs.prev_tag }}
       should_build: ${{ steps.decide.outputs.should_build }}
       image_name: ${{ steps.tags.outputs.image_name }}
+      cache_hit: ${{ steps.restore-tag-cache.outputs.cache-hit }}
 
     steps:
       - name: Fetch latest codex tag
@@ -41,6 +42,7 @@ jobs:
           echo "latest_tag=$latest" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached tag
+        id: restore-tag-cache
         uses: actions/cache/restore@v5
         with:
           path: .cache
@@ -308,7 +310,7 @@ jobs:
       - metadata
       - publish-distro
     runs-on: ubuntu-latest
-    if: ${{ needs.publish-distro.result == 'success' }}
+    if: ${{ needs.publish-distro.result == 'success' && needs.metadata.outputs.cache_hit != 'true' }}
 
     steps:
       - name: Save latest tag cache
