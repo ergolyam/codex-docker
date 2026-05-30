@@ -4,7 +4,7 @@ ARG VERSION
 
 ENV CARGO_HOME=/cargo-cache/cargo
 ENV CARGO_TARGET_DIR=/cargo-cache/target
-ENV RUSTC_WRAPPER=sccache
+ENV RUSTC_WRAPPER=/usr/bin/sccache
 ENV SCCACHE_DIR=/cargo-cache/sccache
 ENV SCCACHE_CACHE_SIZE=3G
 ENV SCCACHE_IDLE_TIMEOUT=0
