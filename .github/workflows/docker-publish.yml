@@ -135,7 +135,9 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/.cache
-          key: cargo-cache-${{ matrix.arch }}-${{ needs.metadata.outputs.latest_tag }}-${{ hashFiles('base.dockerfile') }}
+          key: cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-${{ needs.metadata.outputs.latest_tag }}
+          restore-keys: |
+            cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
 
       - name: Ensure Cargo cache dir exists
         run: mkdir -p "${RUNNER_TEMP}/.cache"
