@@ -178,7 +178,6 @@ jobs:
     needs:
       - metadata
       - build-base
-    if: needs.metadata.outputs.should_build == 'true'
     strategy:
       fail-fast: false
       matrix:
