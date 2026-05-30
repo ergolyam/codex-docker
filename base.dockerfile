@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.95.0-alpine3.23 AS builder
+FROM docker.io/rust:1.96.0-alpine3.23 AS builder
 
 ARG VERSION
 
