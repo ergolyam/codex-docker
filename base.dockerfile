@@ -32,7 +32,7 @@ COPY setup-alpine-rusty-v8.sh ./setup-alpine-rusty-v8.sh
 RUN ./setup-alpine-rusty-v8.sh
 
 RUN sccache --start-server && \
-    trap 'sccache --show-stats || true ; sccache --stop-server || true' EXIT && \
+    trap 'sccache --stop-server || true' EXIT && \
     (sccache --zero-stats || true) && \
     cargo build --manifest-path=codex-rs/cli/Cargo.toml --release && \
     cp /cargo-cache/target/release/codex /codex
