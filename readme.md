@@ -17,7 +17,7 @@ This project builds a **small container image for the Codex CLI** (from the offi
       ghcr.io/ergolyam/codex-docker:latest
     ```
     - The container starts `codex` by default, so you drop straight into the CLI.
-    - Use `:debian` or `:fedora` if you prefer those base layers.
+    - Use `:void`, `:debian`, `:fedora` if you prefer those base layers.
 
 ## Build & run locally
 
@@ -31,7 +31,6 @@ This project builds a **small container image for the Codex CLI** (from the offi
 - Build the runnable image:
     ```bash
     docker build -t codex-cli \
-      --build-arg DIST=alpine \
       --build-arg FINAL_IMAGE=alpine:3.23 \
       --build-arg BASE_IMAGE=codex-base \
       -f dockerfile .
@@ -60,7 +59,6 @@ This project builds a **small container image for the Codex CLI** (from the offi
 
 | Argument      | Description                                                                    |
 |---------------|--------------------------------------------------------------------------------|
-| `DIST`        | Base distro selector used by `install-deps.sh` (`alpine`, `debian`, `fedora`). |
 | `FINAL_IMAGE` | Runtime image (minimal OS for the final layer).                                |
 | `BASE_IMAGE`  | Image that provides the compiled `/codex` binary.                              |
 | `VERSION`     | Upstream `openai/codex` tag to build (example: `rust-v0.80.0`).                |
@@ -74,6 +72,6 @@ This project builds a **small container image for the Codex CLI** (from the offi
 ## Features
 
 - **Slim runtime**: only the Codex binary and CA certificates in the final stage.
-- **Multi‑distro builds**: Alpine, Debian, and Fedora supported via build args.
+- **Multi‑distro builds**: Alpine, Void, Debian, and Fedora supported via build args.
 - **Multi‑arch publishing**: GitHub Actions builds and publishes amd64 + arm64 manifests.
 - **Pinned upstream**: builds from `openai/codex` at `rust` plus a local patch.
