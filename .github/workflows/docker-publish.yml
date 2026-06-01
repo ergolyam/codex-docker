@@ -233,7 +233,6 @@ jobs:
           tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
           containerfiles: ./dockerfile
           build-args: |
-            DIST=${{ matrix.dist }}
             FINAL_IMAGE=${{ matrix.final_image }}
             BASE_IMAGE=localhost/codex-base:${{ matrix.arch }}
 

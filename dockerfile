@@ -1,7 +1,6 @@
 ARG FINAL_IMAGE
 FROM ${FINAL_IMAGE} as main
 
-ARG DIST
 ARG BASE_IMAGE
 
 COPY install-deps.sh ./install-deps.sh
