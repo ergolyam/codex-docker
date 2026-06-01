@@ -193,6 +193,15 @@ jobs:
             final_image: docker.io/alpine:3.23
             arch: arm64
             runs_on: ubuntu-24.04-arm
+          # void
+          - dist: void
+            final_image: ghcr.io/void-linux/void-glibc-busybox:latest
+            arch: amd64
+            runs_on: ubuntu-latest
+          - dist: void
+            final_image: ghcr.io/void-linux/void-glibc-busybox:latest
+            arch: arm64
+            runs_on: ubuntu-24.04-arm
           # debian
           - dist: debian
             final_image: docker.io/debian:trixie-slim
@@ -261,6 +270,8 @@ jobs:
         include:
           - dist: alpine
             tags: "latest alpine"
+          - dist: void
+            tags: "void"
           - dist: debian
             tags: "debian"
           - dist: fedora

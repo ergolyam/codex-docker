@@ -13,6 +13,9 @@ elif command -v apt-get; then
 elif command -v dnf; then
   dnf install -y ${PACKAGES}
   dnf clean all
+elif command -v xbps-install; then
+  xbps-install -SyuM -y ${PACKAGES}
+  rm -rf /var/cache/xbps/*
 else
   echo "Unsupported distro"
   exit 1
