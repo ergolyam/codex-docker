@@ -190,7 +190,7 @@ jobs:
             arch: amd64
             runs_on: ubuntu-latest
           - dist: alpine
-            final_image: docker.io/alpine:latest
+            final_image: docker.io/alpine:3.23
             arch: arm64
             runs_on: ubuntu-24.04-arm
           # debian
