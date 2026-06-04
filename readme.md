@@ -39,7 +39,6 @@ This project builds a **small container image for the Codex CLI** (from the offi
 - Build with a different base distro:
     ```bash
     docker build -t codex-cli \
-      --build-arg DIST=debian \
       --build-arg FINAL_IMAGE=debian:trixie-slim \
       --build-arg BASE_IMAGE=codex-base \
       -f dockerfile .
