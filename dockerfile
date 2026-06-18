@@ -14,4 +14,4 @@ ENV CODEX_HOME=/data
 
 WORKDIR /work
 
-ENTRYPOINT [ "/usr/bin/codex" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
