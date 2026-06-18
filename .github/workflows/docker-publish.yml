@@ -45,7 +45,7 @@ jobs:
         id: restore-tag-cache
         uses: actions/cache/restore@v5
         with:
-          path: .cache
+          path: ${{ runner.temp }}/.cache
           key: codex-tag-${{ steps.latest.outputs.latest_tag }}
           restore-keys: |
             codex-tag-
@@ -54,8 +54,8 @@ jobs:
         id: prev
         run: |
           set -euo pipefail
-          if [ -f .cache/codex_tag.txt ]; then
-            prev="$(cat .cache/codex_tag.txt)"
+          if [ -f ${RUNNER_TEMP}/.cache/codex_tag.txt ]; then
+            prev="$(cat ${RUNNER_TEMP}/.cache/codex_tag.txt)"
           else
             prev=""
           fi
@@ -326,11 +326,11 @@ jobs:
       - name: Save latest tag cache
         run: |
           set -euo pipefail
-          mkdir -p .cache
-          echo "${{ needs.metadata.outputs.latest_tag }}" > .cache/codex_tag.txt
+          mkdir -p ${RUNNER_TEMP}/.cache
+          echo "${{ needs.metadata.outputs.latest_tag }}" > ${RUNNER_TEMP}/.cache/codex_tag.txt
 
       - name: Persist tag cache
         uses: actions/cache/save@v5
         with:
-          path: .cache
+          path: ${{ runner.temp }}/.cache
           key: codex-tag-${{ needs.metadata.outputs.latest_tag }}
