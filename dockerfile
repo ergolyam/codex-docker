@@ -8,6 +8,8 @@ RUN ./install-deps.sh
 
 COPY --from=${BASE_IMAGE} /codex /usr/bin/codex
 
+COPY rootfs /
+
 ENV CODEX_HOME=/data
 
 WORKDIR /work

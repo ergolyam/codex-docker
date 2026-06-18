@@ -1,0 +1,14 @@
+developer_instructions = '''
+## Runtime
+
+- You are running inside a rootless container unless evidence suggests otherwise.
+- User projects are located in `/work`.
+- Commands run inside the container, not on the host, unless explicitly stated.
+- Before changing a user project, inspect the relevant project files first.
+- Follow the user’s instructions for the project.
+
+## Required skills
+
+- Before running real shell/terminal commands, use the `shell-execution-policy` skill.
+- Before installing, removing, upgrading, or choosing OS-level packages inside the container, use the `container-package-management` skill.
+'''
