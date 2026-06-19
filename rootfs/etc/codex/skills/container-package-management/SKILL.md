@@ -6,7 +6,7 @@ description: Use whenever installing, removing, upgrading, or choosing OS-level 
 # Container package management
 
 Use this skill for OS-level packages only.
-Do not use this skill for language-specific package managers such as `npm`, `pnpm`, `pip`, `cargo`, `go`, `composer`, `gem`, or `bundler`, unless an OS package is also required.
+Do not use this skill for language-specific package managers, unless an OS package is also required.
 
 ## Required workflow
 
@@ -14,7 +14,11 @@ Do not use this skill for language-specific package managers such as `npm`, `pnp
 ```sh
 cat /etc/os-release
 ```
+- Treat `/etc/os-release` as the primary source for determining the distribution and its package manager.
+- After reading `/etc/os-release`, infer the package manager from the detected distribution and use it directly.
+- Do not probe for package managers unless `/etc/os-release` is missing or ambiguous.
 
+- Before the first repository search or OS package installation in the current task, always refresh the package repository indexes after detecting the OS. After one successful refresh in the same task, do not refresh them again unless there is clear evidence that the indexes became stale or invalid.
 - Before installing an OS package, search the distribution repositories for the requested package or dependency.
 - Verify that the package exists in the current distribution repositories and that the package name is correct for this distribution.
 - If the exact package is not found, check for distribution-specific names, replacement packages, or suitable alternatives before choosing what to install.
