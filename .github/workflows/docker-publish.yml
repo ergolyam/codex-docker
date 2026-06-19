@@ -142,9 +142,31 @@ jobs:
             cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
 
       - name: Ensure Cargo cache dir exists
-        run: mkdir -p "${RUNNER_TEMP}/.cache"
+        run: |
+          mkdir -p "${RUNNER_TEMP}/.cache"
+          mkdir -p "${RUNNER_TEMP}/.cache/out"
+
+      - name: Delete old oci archives
+        env:
+          OCI_DIR: ${{ runner.temp }}/.cache/out
+          OCI_ARCHIVE: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
+        run: |
+          echo "Keeping: ${OCI_ARCHIVE}"
+          find "${OCI_DIR}" -maxdepth 1 -type f -name 'base-*.tar' ! -name "${OCI_ARCHIVE}" -delete
+
+      - name: Check oci archive exists
+        id: check_oci
+        env:
+          OCI_PATH: ${{ runner.temp }}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
+        run: |
+          if [ -f "${OCI_PATH}" ]; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
 
       - name: Build base image
+        if: steps.check_oci.outputs.exists == 'false'
         uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
         with:
           image: localhost/codex-base
@@ -155,25 +177,25 @@ jobs:
           build-args: |
             VERSION=${{ needs.metadata.outputs.latest_tag }}
 
+      - name: Save OCI archive
+        if: steps.check_oci.outputs.exists == 'false'
+        run: |
+          podman save --format oci-archive -o "${RUNNER_TEMP}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
+
+      - name: Upload OCI archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-base-${{ matrix.arch }}
+          path: ${{ runner.temp }}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
+          retention-days: 1
+          compression-level: 0
+
       - name: Save Cargo cache
         if: ${{ success() && steps.restore-cargo-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ runner.temp }}/.cache
           key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
-
-      - name: Save OCI archive
-        run: |
-          mkdir -p "${RUNNER_TEMP}/out"
-          podman save --format oci-archive -o "${RUNNER_TEMP}/out/base-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
-
-      - name: Upload OCI archive
-        uses: actions/upload-artifact@v7
-        with:
-          name: image-base-${{ matrix.arch }}
-          path: ${{ runner.temp }}/out/base-${{ matrix.arch }}.tar
-          retention-days: 1
-          compression-level: 0
 
   build-distro:
     name: Build ${{ matrix.dist }} ${{ matrix.arch }}
@@ -233,7 +255,7 @@ jobs:
           path: ${{ runner.temp }}/in
 
       - name: Load base image into local storage
-        run: podman load -i "${RUNNER_TEMP}/in/base-${{ matrix.arch }}.tar"
+        run: podman load -i "${RUNNER_TEMP}/in/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar"
 
       - name: Build distro image
         uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
