@@ -6,7 +6,7 @@ ARG BASE_IMAGE
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
-COPY --from=${BASE_IMAGE} /codex /usr/bin/codex
+COPY --from=${BASE_IMAGE} /codex /usr/local/bin/codex
 
 COPY rootfs /
 
@@ -14,4 +14,4 @@ ENV CODEX_HOME=/data
 
 WORKDIR /work
 
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT [ "/usr/local/bin/codex" ]
