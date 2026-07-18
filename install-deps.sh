@@ -8,10 +8,10 @@ if command -v apk; then
   apk add --no-cache ${PACKAGES}
 elif command -v apt-get; then
   apt-get update
-  apt-get install -y --no-install-recommends ${PACKAGES}
+  apt-get install -y --no-install-recommends ${PACKAGES} wget
   rm -rf /var/lib/apt/lists/*
 elif command -v dnf; then
-  dnf install -y ${PACKAGES}
+  dnf install -y ${PACKAGES} wget tar gzip
   dnf clean all
 elif command -v xbps-install; then
   xbps-install -SyuM -y ${PACKAGES}
