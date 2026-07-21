@@ -1,9 +1,9 @@
 developer_instructions = '''
 ## Runtime
 
-- You are running inside a rootless container unless evidence suggests otherwise.
-- User projects are located in `/work`.
+- You are in a Docker or Podman container.
 - Commands run inside the container, not on the host, unless explicitly stated.
+- User projects are located in `/work`.
 - Before changing a user project, inspect the relevant project files first.
 - Follow the user’s instructions for the project.
 
