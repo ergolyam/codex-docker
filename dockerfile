@@ -6,8 +6,9 @@ FROM docker.io/alpine:3.24 AS builder_ssh
 ARG SSH_VERSION
 
 RUN apk add --no-cache \
-    build-base \
-    linux-headers \
+    gcc \
+    make \
+    musl-dev \
     openssl-dev \
     openssl-libs-static \
     zlib-dev \
@@ -40,7 +41,7 @@ RUN ./configure \
 
 RUN make -j"$(nproc)" ssh && \
     strip --strip-unneeded ./ssh && \
-    install -Dm755 ./ssh /usr/bin/ssh
+    install -Dm755 ./ssh /ssh
 
 
 FROM ${FINAL_IMAGE} as main
@@ -51,7 +52,7 @@ COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
 COPY --from=${BASE_IMAGE} /codex /usr/local/bin/codex
-COPY --from=builder_ssh /usr/bin/ssh /usr/local/bin/ssh
+COPY --from=builder_ssh /ssh /usr/local/bin/ssh
 
 ARG TARGETARCH
 RUN wget -O- https://github.com/podman-container-tools/podman/releases/download/v5.8.4/podman-remote-static-linux_${TARGETARCH}.tar.gz | \
