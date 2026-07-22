@@ -14,9 +14,6 @@ permissions:
   contents: read
   packages: write
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
-
 jobs:
   metadata:
     name: Metadata
@@ -54,8 +51,8 @@ jobs:
         id: prev
         run: |
           set -euo pipefail
-          if [ -f ${RUNNER_TEMP}/.cache/codex_tag.txt ]; then
-            prev="$(cat ${RUNNER_TEMP}/.cache/codex_tag.txt)"
+          if [ -f "${RUNNER_TEMP}/.cache/codex_tag.txt" ]; then
+            prev="$(cat "${RUNNER_TEMP}/.cache/codex_tag.txt")"
           else
             prev=""
           fi
@@ -63,15 +60,16 @@ jobs:
 
       - name: Decide whether to build
         id: decide
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.latest_tag }}
+          PREV_TAG: ${{ steps.prev.outputs.prev_tag }}
         run: |
           set -euo pipefail
-          latest="${{ steps.latest.outputs.latest_tag }}"
-          prev="${{ steps.prev.outputs.prev_tag }}"
-          if [ "${{ github.event_name }}" != "schedule" ]; then
+          if [ "${GITHUB_EVENT_NAME}" != "schedule" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
-          elif [ -z "$prev" ]; then
+          elif [ -z "${PREV_TAG}" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
-          elif [ "$latest" != "$prev" ]; then
+          elif [ "${LATEST_TAG}" != "${PREV_TAG}" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
@@ -80,13 +78,17 @@ jobs:
       - name: Prepare image tags
         id: tags
         run: |
-          echo "image_name=${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
+          echo "image_name=ghcr.io/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
 
       - name: Decision summary
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.latest_tag }}
+          PREV_TAG: ${{ steps.prev.outputs.prev_tag }}
+          SHOULD_BUILD: ${{ steps.decide.outputs.should_build }}
         run: |
-          echo "Latest tag: ${{ steps.latest.outputs.latest_tag }}"
-          echo "Cached tag: ${{ steps.prev.outputs.prev_tag }}"
-          echo "Should build: ${{ steps.decide.outputs.should_build }}"
+          echo "Latest tag: ${LATEST_TAG}"
+          echo "Cached tag: ${PREV_TAG}"
+          echo "Should build: ${SHOULD_BUILD}"
 
   build-base:
     name: Build base image ${{ matrix.arch }}
@@ -95,25 +97,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: amd64
-            runs_on: ubuntu-latest
-          - arch: arm64
-            runs_on: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runs_on }}
+        arch: [ x86_64, aarch64 ]
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
 
     steps:
       - name: Set up zram
         run: |
           sudo apt update
-          sudo apt install -y linux-modules-extra-$(uname -r)
+          sudo apt install -y "linux-modules-extra-$(uname -r)"
 
-          for dev in $(zramctl --noheadings -o NAME 2>/dev/null || true); do
-            echo "Disabling /dev/$dev"
-            sudo swapoff "/dev/$dev" || echo "swapoff failed for $dev"
-            echo "Resetting /dev/$dev"
-            sudo zramctl --reset "/dev/$dev" || echo "reset failed for $dev"
-          done
+          while IFS= read -r dev; do
+            echo "Disabling /dev/${dev}"
+            sudo swapoff "/dev/${dev}" || echo "swapoff failed for ${dev}"
+            echo "Resetting /dev/${dev}"
+            sudo zramctl --reset "/dev/${dev}" || echo "reset failed for ${dev}"
+          done < <(zramctl --noheadings -o NAME 2>/dev/null || true)
 
           sudo modprobe -r zram || echo "modprobe -r failed"
           sudo modprobe zram
@@ -121,9 +119,9 @@ jobs:
           echo "Creating new zram device"
           dev=$(sudo zramctl --find --algorithm zstd --size 32G)
 
-          echo "Created $dev"
-          sudo mkswap $dev
-          sudo swapon --priority 100 $dev
+          echo "Created ${dev}"
+          sudo mkswap "${dev}"
+          sudo swapon --priority 100 "${dev}"
 
           echo "Final state:"
           swapon --show
@@ -148,18 +146,17 @@ jobs:
 
       - name: Delete old oci archives
         env:
-          OCI_DIR: ${{ runner.temp }}/.cache/out
           OCI_ARCHIVE: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
         run: |
           echo "Keeping: ${OCI_ARCHIVE}"
-          find "${OCI_DIR}" -maxdepth 1 -type f -name 'base-*.tar' ! -name "${OCI_ARCHIVE}" -delete
+          find "${RUNNER_TEMP}/.cache/out" -maxdepth 1 -type f -name 'base-*.tar' ! -name "${OCI_ARCHIVE}" -delete
 
       - name: Check oci archive exists
         id: check_oci
         env:
-          OCI_PATH: ${{ runner.temp }}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
+          OCI_ARCHIVE: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
         run: |
-          if [ -f "${OCI_PATH}" ]; then
+          if [ -f "${RUNNER_TEMP}/.cache/out/${OCI_ARCHIVE}" ]; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
@@ -179,8 +176,11 @@ jobs:
 
       - name: Save OCI archive
         if: steps.check_oci.outputs.exists == 'false'
+        env:
+          VERSION: ${{ needs.metadata.outputs.latest_tag }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          podman save --format oci-archive -o "${RUNNER_TEMP}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar" "localhost/codex-base:${{ matrix.arch }}"
+          podman save --format oci-archive -o "${RUNNER_TEMP}/.cache/out/base-${VERSION}-${ARCH}.tar" "localhost/codex-base:${ARCH}"
 
       - name: Upload OCI archive
         uses: actions/upload-artifact@v7
@@ -198,51 +198,24 @@ jobs:
           key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
 
   build-distro:
-    name: Build ${{ matrix.dist }} ${{ matrix.arch }}
+    name: Build ${{ matrix.distro.name }} ${{ matrix.arch }}
     needs:
       - metadata
       - build-base
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # alpine
-          - dist: alpine
-            final_image: docker.io/alpine:3.24
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: alpine
-            final_image: docker.io/alpine:3.24
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-          # void
-          - dist: void
-            final_image: ghcr.io/void-linux/void-glibc-busybox:latest
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: void
-            final_image: ghcr.io/void-linux/void-glibc-busybox:latest
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-          # debian
-          - dist: debian
-            final_image: docker.io/debian:trixie-slim
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: debian
-            final_image: docker.io/debian:trixie-slim
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-          # fedora
-          - dist: fedora
-            final_image: quay.io/fedora/fedora-minimal:latest
-            arch: amd64
-            runs_on: ubuntu-latest
-          - dist: fedora
-            final_image: quay.io/fedora/fedora-minimal:latest
-            arch: arm64
-            runs_on: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runs_on }}
+        distro:
+          - name: alpine
+            image: docker.io/alpine:3.24
+          - name: void
+            image: ghcr.io/void-linux/void-glibc-busybox:latest
+          - name: debian
+            image: docker.io/debian:trixie-slim
+          - name: fedora
+            image: quay.io/fedora/fedora-minimal:latest
+        arch: [ x86_64, aarch64 ]
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout code
@@ -255,28 +228,35 @@ jobs:
           path: ${{ runner.temp }}/in
 
       - name: Load base image into local storage
-        run: podman load -i "${RUNNER_TEMP}/in/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar"
+        env:
+          VERSION: ${{ needs.metadata.outputs.latest_tag }}
+          ARCH: ${{ matrix.arch }}
+        run: podman load -i "${RUNNER_TEMP}/in/base-${VERSION}-${ARCH}.tar"
 
       - name: Build distro image
         uses: redhat-actions/buildah-build@061ffd31bb5c3f8733a6f9bbdf00a9fb02eb708c
         with:
           image: ${{ needs.metadata.outputs.image_name }}
-          tags: ci-${{ matrix.dist }}-${{ matrix.arch }}
+          tags: ci-${{ matrix.distro.name }}-${{ matrix.arch }}
           containerfiles: ./dockerfile
           build-args: |
-            FINAL_IMAGE=${{ matrix.final_image }}
+            FINAL_IMAGE=${{ matrix.distro.image }}
             BASE_IMAGE=localhost/codex-base:${{ matrix.arch }}
 
       - name: Save OCI archive
+        env:
+          IMAGE: ${{ needs.metadata.outputs.image_name }}
+          DIST: ${{ matrix.distro.name }}
+          ARCH: ${{ matrix.arch }}
         run: |
           mkdir -p "${RUNNER_TEMP}/out"
-          podman save --format oci-archive -o "${RUNNER_TEMP}/out/${{ matrix.dist }}-${{ matrix.arch }}.tar" "${{ needs.metadata.outputs.image_name }}:ci-${{ matrix.dist }}-${{ matrix.arch }}"
+          podman save --format oci-archive -o "${RUNNER_TEMP}/out/${DIST}-${ARCH}.tar" "${IMAGE}:ci-${DIST}-${ARCH}"
 
       - name: Upload OCI archive
         uses: actions/upload-artifact@v7
         with:
-          name: image-${{ matrix.dist }}-${{ matrix.arch }}
-          path: ${{ runner.temp }}/out/${{ matrix.dist }}-${{ matrix.arch }}.tar
+          name: image-${{ matrix.distro.name }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/out/${{ matrix.distro.name }}-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
 
@@ -289,15 +269,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - dist: alpine
-            tags: "latest alpine"
-          - dist: void
-            tags: "void"
-          - dist: debian
-            tags: "debian"
-          - dist: fedora
-            tags: "fedora"
+        dist: [ alpine, void, debian, fedora ]
 
     steps:
       - name: Download OCI archives
@@ -308,10 +280,12 @@ jobs:
           merge-multiple: true
 
       - name: Load images into local storage
+        env:
+          DIST: ${{ matrix.dist }}
         run: |
           set -euo pipefail
-          for arch in amd64 arm64; do
-            podman load -i "${RUNNER_TEMP}/in/${{ matrix.dist }}-${arch}.tar"
+          for arch in x86_64 aarch64; do
+            podman load -i "${RUNNER_TEMP}/in/${DIST}-${arch}.tar"
           done
 
       - name: Log in to GitHub Container Registry
@@ -322,18 +296,25 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create & push multi-arch tags
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          DIST: ${{ matrix.dist }}
+          AMD: ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-x86_64
+          ARM: ghcr.io/${{ github.repository }}:ci-${{ matrix.dist }}-aarch64
         run: |
           set -euxo pipefail
-          IMAGE="ghcr.io/${{ github.repository }}"
-          AMD="${IMAGE}:ci-${{ matrix.dist }}-amd64"
-          ARM="${IMAGE}:ci-${{ matrix.dist }}-arm64"
 
-          for t in ${{ matrix.tags }}; do
-            podman manifest rm "${IMAGE}:${t}" 2>/dev/null || true
-            podman manifest create "${IMAGE}:${t}"
-            podman manifest add "${IMAGE}:${t}" "containers-storage:${AMD}"
-            podman manifest add "${IMAGE}:${t}" "containers-storage:${ARM}"
-            podman manifest push --all "${IMAGE}:${t}" "docker://${IMAGE}:${t}"
+          tags="${DIST}"
+          if [[ "${DIST}" == "alpine" ]]; then
+            tags="latest ${DIST}"
+          fi
+
+          for tag in ${tags}; do
+            podman manifest rm "${IMAGE}:${tag}" 2>/dev/null || true
+            podman manifest create "${IMAGE}:${tag}"
+            podman manifest add "${IMAGE}:${tag}" "containers-storage:${AMD}"
+            podman manifest add "${IMAGE}:${tag}" "containers-storage:${ARM}"
+            podman manifest push --all "${IMAGE}:${tag}" "docker://${IMAGE}:${tag}"
           done
 
   save-cache:
@@ -346,10 +327,12 @@ jobs:
 
     steps:
       - name: Save latest tag cache
+        env:
+          LATEST_TAG: ${{ needs.metadata.outputs.latest_tag }}
         run: |
           set -euo pipefail
-          mkdir -p ${RUNNER_TEMP}/.cache
-          echo "${{ needs.metadata.outputs.latest_tag }}" > ${RUNNER_TEMP}/.cache/codex_tag.txt
+          mkdir -p "${RUNNER_TEMP}/.cache"
+          echo "${LATEST_TAG}" > "${RUNNER_TEMP}/.cache/codex_tag.txt"
 
       - name: Persist tag cache
         uses: actions/cache/save@v5
