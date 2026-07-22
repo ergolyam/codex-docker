@@ -139,24 +139,33 @@ jobs:
           restore-keys: |
             cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
 
+      - name: Restore oci cache
+        id: restore-oci-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ runner.temp }}/.cache-oci
+          key: oci-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-${{ needs.metadata.outputs.latest_tag }}
+          restore-keys: |
+            oci-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
+
       - name: Ensure Cargo cache dir exists
         run: |
           mkdir -p "${RUNNER_TEMP}/.cache"
-          mkdir -p "${RUNNER_TEMP}/.cache/out"
+          mkdir -p "${RUNNER_TEMP}/.cache-oci"
 
       - name: Delete old oci archives
         env:
           OCI_ARCHIVE: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
         run: |
           echo "Keeping: ${OCI_ARCHIVE}"
-          find "${RUNNER_TEMP}/.cache/out" -maxdepth 1 -type f -name 'base-*.tar' ! -name "${OCI_ARCHIVE}" -delete
+          find "${RUNNER_TEMP}/.cache-oci" -maxdepth 1 -type f -name 'base-*.tar' ! -name "${OCI_ARCHIVE}" -delete
 
       - name: Check oci archive exists
         id: check_oci
         env:
           OCI_ARCHIVE: base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
         run: |
-          if [ -f "${RUNNER_TEMP}/.cache/out/${OCI_ARCHIVE}" ]; then
+          if [ -f "${RUNNER_TEMP}/.cache-oci/${OCI_ARCHIVE}" ]; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
@@ -180,13 +189,13 @@ jobs:
           VERSION: ${{ needs.metadata.outputs.latest_tag }}
           ARCH: ${{ matrix.arch }}
         run: |
-          podman save --format oci-archive -o "${RUNNER_TEMP}/.cache/out/base-${VERSION}-${ARCH}.tar" "localhost/codex-base:${ARCH}"
+          podman save --format oci-archive -o "${RUNNER_TEMP}/.cache-oci/base-${VERSION}-${ARCH}.tar" "localhost/codex-base:${ARCH}"
 
       - name: Upload OCI archive
         uses: actions/upload-artifact@v7
         with:
           name: image-base-${{ matrix.arch }}
-          path: ${{ runner.temp }}/.cache/out/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
+          path: ${{ runner.temp }}/.cache-oci/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
 
@@ -196,6 +205,13 @@ jobs:
         with:
           path: ${{ runner.temp }}/.cache
           key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
+
+      - name: Save oci cache
+        if: ${{ success() && steps.restore-oci-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}/.cache-oci
+          key: ${{ steps.restore-oci-cache.outputs.cache-primary-key }}
 
   build-distro:
     name: Build ${{ matrix.distro.name }} ${{ matrix.arch }}
