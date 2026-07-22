@@ -1,4 +1,48 @@
 ARG FINAL_IMAGE
+ARG SSH_VERSION=10.4p1
+
+FROM docker.io/alpine:3.24 AS builder_ssh
+
+ARG SSH_VERSION
+
+RUN apk add --no-cache \
+    build-base \
+    linux-headers \
+    openssl-dev \
+    openssl-libs-static \
+    zlib-dev \
+    zlib-static
+
+WORKDIR /build
+
+RUN wget -qO - https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${SSH_VERSION}.tar.gz | tar xz -f - --strip-components=1
+
+ENV CC=gcc
+ENV LD="${CC}"
+ENV CFLAGS="-Os -pipe -ffunction-sections -fdata-sections"
+ENV LDFLAGS="-static -Wl,--gc-sections"
+
+RUN ./configure \
+        --prefix=/usr \
+        --sysconfdir=/etc/ssh \
+        --libexecdir=/usr/lib/ssh \
+        --with-ssl-dir=/usr \
+        --with-zlib=/usr \
+        --without-pam \
+        --without-kerberos5 \
+        --without-libedit \
+        --disable-utmp \
+        --disable-wtmp \
+        --disable-lastlog \
+        --disable-strip \
+        --with-cflags="${CFLAGS}" \
+        --with-ldflags="${LDFLAGS}"
+
+RUN make -j"$(nproc)" ssh && \
+    strip --strip-unneeded ./ssh && \
+    install -Dm755 ./ssh /usr/bin/ssh
+
+
 FROM ${FINAL_IMAGE} as main
 
 ARG BASE_IMAGE
@@ -7,13 +51,14 @@ COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
 COPY --from=${BASE_IMAGE} /codex /usr/local/bin/codex
-
-COPY rootfs /
+COPY --from=builder_ssh /usr/bin/ssh /usr/local/bin/ssh
 
 ARG TARGETARCH
 RUN wget -O- https://github.com/podman-container-tools/podman/releases/download/v5.8.4/podman-remote-static-linux_${TARGETARCH}.tar.gz | \
     tar -xOz "bin/podman-remote-static-linux_${TARGETARCH}" > /usr/local/bin/podman-remote && \
     chmod +x /usr/local/bin/podman-remote
+
+COPY rootfs /
 
 ENV CODEX_HOME=/data
 
