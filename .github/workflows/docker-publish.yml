@@ -258,6 +258,7 @@ jobs:
           build-args: |
             FINAL_IMAGE=${{ matrix.distro.image }}
             BASE_IMAGE=localhost/codex-base:${{ matrix.arch }}
+            DISTRO=${{ matrix.distro.name }}
 
       - name: Save OCI archive
         env:

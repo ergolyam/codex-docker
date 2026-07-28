@@ -49,6 +49,7 @@ RUN make -j"$(nproc)" ssh scp && \
 FROM ${FINAL_IMAGE} as main
 
 ARG BASE_IMAGE
+ARG DISTRO
 
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
@@ -62,6 +63,8 @@ RUN wget -O- https://github.com/podman-container-tools/podman/releases/download/
     chmod +x /usr/local/bin/podman-remote
 
 COPY rootfs /
+COPY install-skill.sh ./install-skill.sh
+RUN ./install-skill.sh
 
 ENV CODEX_HOME=/data
 

@@ -31,8 +31,9 @@ This project builds a **small container image for the Codex CLI** (from the offi
 - Build the runnable image:
     ```bash
     docker build -t codex-cli \
-      --build-arg FINAL_IMAGE=alpine:3.23 \
+      --build-arg FINAL_IMAGE=alpine:3.24 \
       --build-arg BASE_IMAGE=codex-base \
+      --build-arg DISTRO=alpine \
       -f dockerfile .
     ```
 
@@ -41,6 +42,7 @@ This project builds a **small container image for the Codex CLI** (from the offi
     docker build -t codex-cli \
       --build-arg FINAL_IMAGE=debian:trixie-slim \
       --build-arg BASE_IMAGE=codex-base \
+      --build-arg DISTRO=debian \
       -f dockerfile .
     ```
 
@@ -60,6 +62,7 @@ This project builds a **small container image for the Codex CLI** (from the offi
 |---------------|--------------------------------------------------------------------------------|
 | `FINAL_IMAGE` | Runtime image (minimal OS for the final layer).                                |
 | `BASE_IMAGE`  | Image that provides the compiled `/codex` binary.                              |
+| `DISTRO`      | Runtime distribution: `alpine`, `void`, `debian`, or `fedora`.                 |
 | `VERSION`     | Upstream `openai/codex` tag to build (example: `rust-v0.80.0`).                |
 
 ## Environment Variables
