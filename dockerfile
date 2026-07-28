@@ -25,6 +25,7 @@ ENV LDFLAGS="-static -Wl,--gc-sections"
 
 RUN ./configure \
         --prefix=/usr \
+        --bindir=/usr/local/bin \
         --sysconfdir=/etc/ssh \
         --libexecdir=/usr/lib/ssh \
         --with-ssl-dir=/usr \
@@ -39,9 +40,10 @@ RUN ./configure \
         --with-cflags="${CFLAGS}" \
         --with-ldflags="${LDFLAGS}"
 
-RUN make -j"$(nproc)" ssh && \
-    strip --strip-unneeded ./ssh && \
-    install -Dm755 ./ssh /ssh
+RUN make -j"$(nproc)" ssh scp && \
+    strip --strip-unneeded ./ssh ./scp && \
+    install -Dm755 ./ssh /out/ssh && \
+    install -Dm755 ./scp /out/scp
 
 
 FROM ${FINAL_IMAGE} as main
@@ -52,7 +54,7 @@ COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
 COPY --from=${BASE_IMAGE} /codex /usr/local/bin/codex
-COPY --from=builder_ssh /ssh /usr/local/bin/ssh
+COPY --from=builder_ssh /out/ /usr/local/bin/
 
 ARG TARGETARCH
 RUN wget -O- https://github.com/podman-container-tools/podman/releases/download/v5.8.4/podman-remote-static-linux_${TARGETARCH}.tar.gz | \
