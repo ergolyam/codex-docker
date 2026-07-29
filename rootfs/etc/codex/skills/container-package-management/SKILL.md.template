@@ -11,12 +11,12 @@ Do not use this skill for language-specific package managers, unless an OS packa
 ## Container environment
 
 - This image uses the `@DISTRO@` distribution. This value should be considered accurate.
-- Do not read `/etc/os-release` or probe for package managers to identify the distribution.
 - Use the native package manager for `@DISTRO@` directly:
   - `alpine`: `apk`
-  - `void`: `xbps`
+  - `void`: `xbps` - Use the `xbps-install`, xbps-query` and other commands included in the xbps package manager.
   - `debian`: `apt`
   - `fedora`: `dnf`
+  - `nix`: `nix` - Do not use experimental features of the Nix package manager, such as `flakes` and the like; instead, use tried-and-tested syntax, such as `nix-env`, `nix-shell` and other commands included in the Nix package manager.
 
 ## Required workflow
 

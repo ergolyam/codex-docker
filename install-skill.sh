@@ -5,7 +5,7 @@ set -eu
 : "${DISTRO:?DISTRO build argument is required}"
 
 case "${DISTRO}" in
-  alpine|void|debian|fedora)
+  alpine|void|debian|fedora|nix)
     ;;
   *)
     echo "Unsupported DISTRO: ${DISTRO}" >&2

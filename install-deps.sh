@@ -16,6 +16,8 @@ elif command -v dnf; then
 elif command -v xbps-install; then
   xbps-install -SyuM -y ${PACKAGES}
   rm -rf /var/cache/xbps/*
+elif command -v nix-env; then
+  nix-env -iA nixpkgs.cacert nixpkgs.bubblewrap nixpkgs.ripgrep nixpkgs.gnused
 else
   echo "Unsupported distro"
   exit 1
