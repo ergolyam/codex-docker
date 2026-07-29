@@ -67,6 +67,7 @@ COPY install-skill.sh ./install-skill.sh
 RUN ./install-skill.sh
 
 ENV CODEX_HOME=/data
+ENV PATH="/usr/local/bin:${PATH}"
 
 WORKDIR /work
 
