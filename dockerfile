@@ -54,7 +54,7 @@ ARG DISTRO
 COPY install-deps.sh ./install-deps.sh
 RUN ./install-deps.sh
 
-COPY --from=${BASE_IMAGE} /codex /usr/local/bin/codex
+COPY --from=${BASE_IMAGE} /out/ /usr/local/bin/
 COPY --from=builder_ssh /out/ /usr/local/bin/
 
 ARG TARGETARCH

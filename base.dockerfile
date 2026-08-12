@@ -34,10 +34,15 @@ RUN ./setup-alpine-rusty-v8.sh
 RUN sccache --start-server && \
     trap 'sccache --stop-server || true' EXIT && \
     (sccache --zero-stats || true) && \
-    cargo build --manifest-path=codex-rs/cli/Cargo.toml --release && \
-    cp /cargo-cache/target/release/codex /codex
+    cargo build --manifest-path=codex-rs/Cargo.toml \
+        --release \
+        -p codex-cli \
+        -p codex-code-mode-host && \
+    mkdir -p /out && \
+    cp /cargo-cache/target/release/codex /out/codex && \
+    cp /cargo-cache/target/release/codex-code-mode-host /out/codex-code-mode-host
 
 
 FROM scratch AS main
 
-COPY --from=builder /codex /codex
+COPY --from=builder /out /out
