@@ -34,7 +34,6 @@ mkdir -p "${config_dir}"
 
 cat <<EOF >> "${config_file}"
 
-[env]
 RUSTY_V8_ARCHIVE = "https://github.com/openai/codex/releases/download/rusty-v8-v${v8_version}/librusty_v8_release_${target}.a.gz"
 RUSTY_V8_SRC_BINDING_PATH = "${binding}"
 EOF
