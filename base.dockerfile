@@ -4,10 +4,6 @@ ARG VERSION
 
 ENV CARGO_HOME=/cargo-cache/cargo
 ENV CARGO_TARGET_DIR=/cargo-cache/target
-ENV RUSTC_WRAPPER=/usr/bin/sccache
-ENV SCCACHE_DIR=/cargo-cache/sccache
-ENV SCCACHE_CACHE_SIZE=3G
-ENV SCCACHE_IDLE_TIMEOUT=0
 
 RUN apk add --no-cache \
     build-base \
@@ -31,10 +27,7 @@ RUN git apply codex-bind.patch
 COPY setup-alpine-rusty-v8.sh ./setup-alpine-rusty-v8.sh
 RUN ./setup-alpine-rusty-v8.sh
 
-RUN sccache --start-server && \
-    trap 'sccache --stop-server || true' EXIT && \
-    (sccache --zero-stats || true) && \
-    cargo build --manifest-path=codex-rs/Cargo.toml \
+RUN cargo build --manifest-path=codex-rs/Cargo.toml \
         --release \
         -p codex-cli \
         -p codex-code-mode-host && \

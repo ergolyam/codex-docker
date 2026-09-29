@@ -130,15 +130,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Restore Cargo cache
-        id: restore-cargo-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ runner.temp }}/.cache
-          key: cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-${{ needs.metadata.outputs.latest_tag }}
-          restore-keys: |
-            cargo-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
-
       - name: Restore oci cache
         id: restore-oci-cache
         uses: actions/cache/restore@v5
@@ -148,9 +139,8 @@ jobs:
           restore-keys: |
             oci-cache-${{ matrix.arch }}-${{ hashFiles('base.dockerfile') }}-
 
-      - name: Ensure Cargo cache dir exists
+      - name: Ensure cache dir exists
         run: |
-          mkdir -p "${RUNNER_TEMP}/.cache"
           mkdir -p "${RUNNER_TEMP}/.cache-oci"
 
       - name: Delete old oci archives
@@ -178,12 +168,10 @@ jobs:
           image: localhost/codex-base
           tags: ${{ matrix.arch }}
           containerfiles: ./base.dockerfile
-          extra-args: |
-            --volume ${{ runner.temp }}/.cache:/cargo-cache:rw,U
           build-args: |
             VERSION=${{ needs.metadata.outputs.latest_tag }}
 
-      - name: Save OCI archive
+      - name: Export OCI archive
         if: steps.check_oci.outputs.exists == 'false'
         env:
           VERSION: ${{ needs.metadata.outputs.latest_tag }}
@@ -198,13 +186,6 @@ jobs:
           path: ${{ runner.temp }}/.cache-oci/base-${{ needs.metadata.outputs.latest_tag }}-${{ matrix.arch }}.tar
           retention-days: 1
           compression-level: 0
-
-      - name: Save Cargo cache
-        if: ${{ success() && steps.restore-cargo-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ runner.temp }}/.cache
-          key: ${{ steps.restore-cargo-cache.outputs.cache-primary-key }}
 
       - name: Save oci cache
         if: ${{ success() && steps.restore-oci-cache.outputs.cache-hit != 'true' }}
