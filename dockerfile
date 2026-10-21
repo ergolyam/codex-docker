@@ -71,4 +71,4 @@ ENV PATH="/usr/local/bin:${PATH}"
 
 WORKDIR /work
 
-ENTRYPOINT [ "/usr/local/bin/codex" ]
+ENTRYPOINT [ "/usr/local/bin/codex", "--no-daemon" ]
