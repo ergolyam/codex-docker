@@ -103,8 +103,11 @@ jobs:
     steps:
       - name: Set up zram
         run: |
-          sudo apt update
-          sudo apt install -y "linux-modules-extra-$(uname -r)"
+          kernel="$(uname -r)"
+          if (( ${kernel%%.*} < 7 )); then
+            sudo apt-get update
+            sudo apt-get install -y "linux-modules-extra-${kernel}"
+          fi
 
           while IFS= read -r dev; do
             echo "Disabling /dev/${dev}"
